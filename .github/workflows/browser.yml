@@ -53,7 +53,21 @@ jobs:
       - run: npx playwright install-deps chromium
         if: steps.browser-cache.outputs.cache-hit == 'true'
 
-      - run: npx playwright test --project=chromium --shard=${{ matrix.shard }}/2
+      - run: npx playwright test --project=chromium --shard=${{ matrix.shard }}/2 --reporter=blob,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: report.json
+
+      # The flaky gate lives in the job that produced the result, not in
+      # the merge job: a test that only passed on retry is a defect, and
+      # whether it is reported must not depend on an artifact download.
+      - name: Fail if anything only passed on retry
+        if: always()
+        run: |
+          set -uo pipefail
+          test -s report.json || { echo "no json report produced"; exit 1; }
+          flaky=$(jq '[.suites[]? | recurse(.suites[]?) | .specs[]? | select(.tests[]?.status == "flaky")] | length' report.json)
+          echo "tests that only passed on retry: ${flaky:-0}"
+          test "${flaky:-0}" -eq 0
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -80,7 +94,21 @@ jobs:
           cache-dependency-path: browser/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser == 'webkit-critical' && 'webkit' || 'firefox' }}
-      - run: npx playwright test --project=${{ matrix.browser }}
+      - run: npx playwright test --project=${{ matrix.browser }} --reporter=blob,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: report.json
+
+      # The flaky gate lives in the job that produced the result, not in
+      # the merge job: a test that only passed on retry is a defect, and
+      # whether it is reported must not depend on an artifact download.
+      - name: Fail if anything only passed on retry
+        if: always()
+        run: |
+          set -uo pipefail
+          test -s report.json || { echo "no json report produced"; exit 1; }
+          flaky=$(jq '[.suites[]? | recurse(.suites[]?) | .specs[]? | select(.tests[]?.status == "flaky")] | length' report.json)
+          echo "tests that only passed on retry: ${flaky:-0}"
+          test "${flaky:-0}" -eq 0
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -107,13 +135,17 @@ jobs:
           cache-dependency-path: browser/package-lock.json
       - run: npm ci
 
+      # Diagnostics only — the gates live in the jobs above. GitHub's
+      # artifact service occasionally fails a download, and that must not
+      # turn a suite that passed on four machines red.
       - uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           path: browser/all-blobs
           pattern: blob-report-*
           merge-multiple: true
 
-      - run: npx playwright merge-reports --reporter=html,json ./all-blobs > report.json
+      - run: npx playwright merge-reports --reporter=html ./all-blobs
         continue-on-error: true
 
       - uses: actions/upload-artifact@v4
@@ -122,15 +154,3 @@ jobs:
           name: playwright-report
           path: browser/playwright-report/
           retention-days: 14
-
-      # A test that only passed on retry is not a passing test. Most runners
-      # hide that; Playwright distinguishes it, so the pipeline acts on it.
-      - name: Fail if anything only passed on retry
-        run: |
-          set -uo pipefail
-          if [ ! -s report.json ]; then
-            echo "no merged report to inspect"; exit 0
-          fi
-          flaky=$(jq '[.suites[]? | recurse(.suites[]?) | .specs[]? | select(.tests[]?.status == "flaky")] | length' report.json)
-          echo "tests that only passed on retry: ${flaky:-0}"
-          test "${flaky:-0}" -eq 0

@@ -1,0 +1,51 @@
+# Java samples: JUnit 5, AssertJ, Mockito, WireMock and a consumer-driven
+# contract verified against a real provider.
+name: Java
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: java-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: java
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+          cache-dependency-path: java/pom.xml
+
+      - run: mvn -B test
+
+      - name: Publish results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Java tests
+          path: java/target/surefire-reports/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: java-results
+          path: java/target/surefire-reports/
+          retention-days: 7

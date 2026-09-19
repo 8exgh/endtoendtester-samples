@@ -1,0 +1,22 @@
+{
+  "consumer": "checkout-web",
+  "provider": "orders-api",
+  "interactions": [
+    {
+      "description": "a request for order ORD-1",
+      "providerState": "order ORD-1 exists with a total of 1999 GBP",
+      "request": {
+        "method": "GET",
+        "path": "/orders/ORD-1",
+        "headers": { "Accept": "application/json" }
+      },
+      "response": {
+        "status": 200,
+        "matchingRules": {
+          "$.body.total_cents": { "match": "integer" },
+          "$.body.currency": { "match": "regex", "regex": "[A-Z]{3}" }
+        }
+      }
+    }
+  ]
+}

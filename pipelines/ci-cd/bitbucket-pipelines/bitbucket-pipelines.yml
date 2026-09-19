@@ -1,0 +1,86 @@
+# https://endtoendtester.com/ci-cd/bitbucket-pipelines
+#
+# The simplest model of the five, and the limits are real: a step is capped
+# at 120 minutes, each step is a fresh container, and anything one step
+# produces that another needs must be an artifact.
+image: node:22
+
+definitions:
+  caches:
+    playwright: ~/.cache/ms-playwright
+
+  services:
+    postgres:
+      image: postgres:16-alpine
+      variables:
+        POSTGRES_DB: test
+        POSTGRES_PASSWORD: test
+
+  steps:
+    - step: &checks
+        name: Lint and typecheck
+        caches: [node]
+        script:
+          - cd typescript && npm ci && npm run typecheck
+
+    - step: &unit
+        name: Unit tests
+        caches: [node]
+        script:
+          # Bitbucket picks up JUnit XML from test-results/ automatically —
+          # the path convention is the whole integration, there is no task
+          # to configure.
+          - cd typescript && npm ci && npm run test:unit -- --ci
+        artifacts:
+          - typescript/coverage/**
+
+    - step: &integration
+        name: Containerised integration
+        caches: [node]
+        services: [postgres]
+        script:
+          - cd typescript && npm ci && npm run test:docker -- --ci
+
+pipelines:
+  pull-requests:
+    '**':
+      - step: *checks
+      - parallel:
+          - step: *unit
+          - step: *integration
+      - parallel:
+          fail-fast: false
+          steps:
+            - step: &e2e
+                name: E2E 1/2
+                # 8GB. Chromium plus the app plus Node in the default 4GB is
+                # tight, and the failure mode is an out-of-memory kill that
+                # reads exactly like a flaky test.
+                size: 2x
+                caches: [node, playwright]
+                script:
+                  - cd browser && npm ci
+                  - npx playwright install --with-deps chromium
+                  - npx playwright test --project=chromium --shard=1/2 --reporter=junit
+                artifacts:
+                  - browser/test-results/**
+            - step:
+                <<: *e2e
+                name: E2E 2/2
+                script:
+                  - cd browser && npm ci
+                  - npx playwright install --with-deps chromium
+                  - npx playwright test --project=chromium --shard=2/2 --reporter=junit
+
+  branches:
+    main:
+      - step: *checks
+      - parallel:
+          - step: *unit
+          - step: *integration
+      - step:
+          name: Deploy
+          deployment: production
+          trigger: manual
+          script:
+            - echo "deploy"

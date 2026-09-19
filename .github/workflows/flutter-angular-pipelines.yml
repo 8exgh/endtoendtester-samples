@@ -1,0 +1,68 @@
+# Flutter, Angular and the CI-platform configuration samples.
+name: Flutter, Angular, Pipelines
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: flutter-angular-pipelines-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  flutter:
+    name: Flutter
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: flutter
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter --version
+      - run: flutter pub get
+      - run: flutter analyze
+      # Widget tests run headless on any runner — no emulator, no device.
+      - run: flutter test --reporter expanded
+
+  angular:
+    name: Angular
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: angular
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: angular/package-lock.json
+      - run: npm ci
+      - run: npx jest
+
+  pipelines:
+    name: CI platform samples
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pyyaml
+      # These four configurations belong to other platforms and cannot run
+      # here, so they are parsed and checked for the property each article
+      # is about. A reference config nobody checks rots like a stale comment.
+      - run: python3 tools/validate_pipelines.py

@@ -1,0 +1,102 @@
+// https://endtoendtester.com/ci-cd/jenkins
+//
+// Declarative, with per-stage agents so no global executor is held. The two
+// container arguments below matter far more than they look.
+pipeline {
+    agent none
+
+    options {
+        timeout(time: 45, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '10'))
+        disableConcurrentBuilds(abortPrevious: true)
+        timestamps()
+    }
+
+    environment {
+        CI = 'true'
+    }
+
+    stages {
+        stage('Checks') {
+            agent { docker { image 'node:22' } }
+            steps {
+                dir('typescript') {
+                    sh 'npm ci'
+                    sh 'npm run typecheck'
+                }
+            }
+        }
+
+        stage('Tests') {
+            parallel {
+                stage('Unit') {
+                    agent { docker { image 'node:22' } }
+                    steps {
+                        dir('typescript') {
+                            sh 'npm ci'
+                            sh 'npm run test:unit -- --ci'
+                        }
+                    }
+                    post {
+                        // always: the report matters most when the stage failed.
+                        always { junit testResults: 'typescript/reports/junit.xml', allowEmptyResults: false }
+                    }
+                }
+
+                stage('Containerised integration') {
+                    agent {
+                        docker {
+                            image 'node:22'
+                            // Testcontainers needs a docker socket. Note the
+                            // security implication: a container with the
+                            // host's socket can control the host, so this
+                            // belongs on a dedicated agent.
+                            args '-v /var/run/docker.sock:/var/run/docker.sock --network host'
+                        }
+                    }
+                    steps {
+                        dir('typescript') {
+                            sh 'npm ci'
+                            sh 'npm run test:docker -- --ci'
+                        }
+                    }
+                }
+
+                stage('E2E') {
+                    agent {
+                        docker {
+                            image 'mcr.microsoft.com/playwright:v1.49.1-noble'
+                            // Without --ipc=host, Chrome gets 64MB of shared
+                            // memory and crashes intermittently under
+                            // parallel load. This is one of the most
+                            // commonly reported causes of "flaky browser
+                            // tests in Jenkins", and it is not a test
+                            // problem at all.
+                            args '--ipc=host'
+                        }
+                    }
+                    steps {
+                        dir('browser') {
+                            sh 'npm ci'
+                            sh 'npx playwright test --project=chromium --reporter=junit,html'
+                        }
+                    }
+                    post {
+                        always {
+                            junit 'browser/test-results/junit.xml'
+                            archiveArtifacts artifacts: 'browser/playwright-report/**', allowEmptyArchive: true
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        // "unstable" means the tests failed; "failure" means the pipeline
+        // itself broke. Jenkins makes that distinction and most platforms
+        // do not.
+        unstable { echo 'Tests failed' }
+        fixed { echo 'Back to green' }
+    }
+}

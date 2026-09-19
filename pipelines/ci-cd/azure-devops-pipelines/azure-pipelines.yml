@@ -1,0 +1,88 @@
+# https://endtoendtester.com/ci-cd/azure-devops-pipelines
+#
+# The same pipeline as .github/workflows/dotnet.yml, expressed for Azure
+# DevOps — so the difference that matters (Test Analytics, which tracks
+# per-test pass rate and flakiness with no extra tooling) is visible next
+# to an otherwise identical build.
+trigger:
+  branches:
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
+
+variables:
+  buildConfiguration: Release
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+stages:
+  - stage: Test
+    jobs:
+      - job: Unit
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              version: 8.0.x
+
+          - task: Cache@2
+            inputs:
+              key: 'nuget | "$(Agent.OS)" | dotnet/**/*.csproj'
+              restoreKeys: 'nuget | "$(Agent.OS)"'
+              path: $(NUGET_PACKAGES)
+
+          - script: |
+              dotnet test dotnet/Samples.sln \
+                --configuration $(buildConfiguration) \
+                --logger "trx;LogFileName=unit.trx" \
+                --collect:"XPlat Code Coverage" \
+                --results-directory $(Agent.TempDirectory)/TestResults
+            displayName: Unit and component tests
+
+          # condition: always() — the report matters most when the step failed.
+          - task: PublishTestResults@2
+            condition: always()
+            inputs:
+              testResultsFormat: VSTest
+              testResultsFiles: '**/unit.trx'
+              testRunTitle: .NET tests
+              failTaskOnFailedTests: true
+
+          - task: PublishCodeCoverageResults@2
+            condition: always()
+            inputs:
+              summaryFileLocation: '$(Agent.TempDirectory)/TestResults/**/coverage.cobertura.xml'
+
+      - job: E2E
+        pool:
+          vmImage: ubuntu-latest
+        # Four agents run this job; each slices the suite itself using the
+        # position variables Azure sets.
+        strategy:
+          parallel: 4
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: 22.x
+
+          - script: npm ci && npx playwright install --with-deps chromium
+            workingDirectory: browser
+
+          - script: |
+              npx playwright test --project=chromium \
+                --shard=$(System.JobPositionInPhase)/$(System.TotalJobsInPhase) \
+                --reporter=junit
+            workingDirectory: browser
+            displayName: Playwright shard
+            env:
+              PLAYWRIGHT_JUNIT_OUTPUT_NAME: results.xml
+
+          - task: PublishTestResults@2
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: browser/results.xml
+              testRunTitle: E2E shard $(System.JobPositionInPhase)

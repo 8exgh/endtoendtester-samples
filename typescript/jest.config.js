@@ -44,13 +44,15 @@ module.exports = {
       testEnvironment: 'node',
       transform,
       testMatch: ['<rootDir>/src/**/*.test.ts'],
-      testPathIgnorePatterns: ['/node_modules/', ...dockerPatterns]
+      // `.dom.test.ts` is the escape hatch for a DOM test with no JSX in
+      // it — a Knockout binding, a web component, a jQuery plugin.
+      testPathIgnorePatterns: ['/node_modules/', '\\.dom\\.test\\.ts$', ...dockerPatterns]
     },
     {
       displayName: 'dom',
       testEnvironment: 'jsdom',
       transform,
-      testMatch: ['<rootDir>/src/**/*.test.tsx'],
+      testMatch: ['<rootDir>/src/**/*.test.tsx', '<rootDir>/src/**/*.dom.test.ts'],
       setupFilesAfterEnv: ['<rootDir>/jest.setup.ts']
     },
     {

@@ -39,7 +39,7 @@ describe('GET /orders/:id', () => {
     ['admin', 200],
     ['otherTenant', 404],
     ['anonymous', 401]
-  ] as const)('as %s returns %i', async (who, expected) => {
+  ] as const)('reading it as %s returns %i', async (who, expected) => {
     const id = await anOrderOwnedByAlice();
 
     await request(app).get(`/orders/${id}`).set(as(who)).expect(expected);
@@ -64,7 +64,7 @@ describe('DELETE /orders/:id', () => {
     ['colleague', 403],
     ['otherTenant', 404],
     ['anonymous', 401]
-  ] as const)('as %s returns %i', async (who, expected) => {
+  ] as const)('deleting it as %s returns %i', async (who, expected) => {
     const id = await anOrderOwnedByAlice();
 
     await request(app).delete(`/orders/${id}`).set(as(who)).expect(expected);

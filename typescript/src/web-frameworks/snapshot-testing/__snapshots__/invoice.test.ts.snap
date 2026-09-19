@@ -1,0 +1,9 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`keeping a snapshot honest pins the fields that vary rather than snapshotting them 1`] = `
+{
+  "id": Any<String>,
+  "paidAt": Any<Date>,
+  "totalCents": 3295,
+}
+`;

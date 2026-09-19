@@ -5,7 +5,7 @@ import { Cart, DiscountPolicy } from './cart';
    so inlining DiscountPolicy into Cart tomorrow breaks nothing here. */
 
 describe('Cart', () => {
-  it('sums its lines', () => {
+  it('sums every line at its own quantity', () => {
     const cart = new Cart([
       { sku: 'book', unitCents: 2_000, quantity: 3 },
       { sku: 'pen', unitCents: 500, quantity: 1 }

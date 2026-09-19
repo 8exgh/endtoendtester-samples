@@ -2,7 +2,7 @@ import { fitsTheInnerLoop, runChecks, type Check } from './fast-check';
 
 /* https://endtoendtester.com/roles/shift-left-testing */
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 describe('the inner loop', () => {
   it('reports how long each check took and whether it fits its budget', async () => {

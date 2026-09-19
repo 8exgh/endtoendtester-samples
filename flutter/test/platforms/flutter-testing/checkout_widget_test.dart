@@ -50,6 +50,14 @@ void main() {
   });
 
   testWidgets('finds the field by the label a screen reader announces', (tester) async {
+    /* The semantics tree is not built in a widget test unless you ask for
+       it, so find.bySemanticsLabel silently finds nothing — which looks
+       exactly like a missing label and is not one. ensureSemantics() turns
+       it on, and the handle has to be disposed or the next test inherits
+       an enabled tree it did not ask for. */
+    final handle = tester.ensureSemantics();
+    addTearDown(handle.dispose);
+
     await tester.pumpWidget(const CheckoutScreen(lines: basket));
 
     expect(find.bySemanticsLabel('Quantity'), findsWidgets);

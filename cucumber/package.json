@@ -1,0 +1,13 @@
+{
+  "name": "endtoendtester-samples-cucumber",
+  "private": true,
+  "type": "module",
+  "description": "Given-when-then and BDD samples for endtoendtester.com",
+  "scripts": {
+    "test": "cucumber-js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.2.0"
+  }
+}

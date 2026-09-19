@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newSession, seedCart } from '../../support/api';
+import { newSession, seedCart } from '../../../support/api';
 
 /* The two ideas that make Playwright what it is: locators are lazy, and
    assertions retry. https://endtoendtester.com/tools/playwright */

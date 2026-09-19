@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { newSession, seedCart } from '../../support/api';
+import { newSession, seedCart } from '../../../support/api';
 
 /* The journeys that would end the business if they broke — and nothing
    else. https://endtoendtester.com/testing-levels/end-to-end-testing */

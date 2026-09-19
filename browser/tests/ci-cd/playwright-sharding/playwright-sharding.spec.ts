@@ -7,8 +7,8 @@ import { expect, test } from '@playwright/test';
    that actually shards it is .github/workflows/browser.yml.
    https://endtoendtester.com/ci-cd/playwright-sharding */
 
-const CONFIG = fs.readFileSync(path.resolve(__dirname, '../../playwright.config.ts'), 'utf8');
-const TEST_DIR = path.resolve(__dirname, '..');
+const CONFIG = fs.readFileSync(path.resolve(__dirname, '../../../playwright.config.ts'), 'utf8');
+const TEST_DIR = path.resolve(__dirname, '../..');
 
 function specFiles(dir: string, found: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

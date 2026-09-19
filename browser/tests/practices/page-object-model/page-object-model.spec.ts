@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
-import { CheckoutPage } from '../../support/pages/checkout-page';
-import { ProductPage } from '../../support/pages/product-page';
+import { CheckoutPage } from '../../../support/pages/checkout-page';
+import { ProductPage } from '../../../support/pages/product-page';
 
 /* The test talks about what the user is doing; one file knows where the
    buttons are. https://endtoendtester.com/practices/page-object-model */

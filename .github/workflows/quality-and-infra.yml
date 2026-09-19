@@ -1,0 +1,113 @@
+# Mutation testing, load testing and infrastructure-as-code tests.
+name: Mutation, Load, Terraform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: quality-infra-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  mutation:
+    name: Mutation testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - run: npm ci
+
+      # Scoped to two small modules: mutation testing is worth running on
+      # the code where a silent wrong answer is expensive, not on
+      # everything. See /coverage/mutation-testing.
+      - run: npm run mutation
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: typescript/reports/mutation/
+          retention-days: 7
+
+  k6:
+    name: Performance and load
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - run: npm ci
+        working-directory: browser
+
+      - uses: grafana/setup-k6-action@v1
+
+      - name: Start the sample shop
+        run: |
+          node app/server.mjs &
+          for _ in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:4321/api/health >/dev/null 2>&1 && break
+            sleep 1
+          done
+        working-directory: browser
+
+      # A smoke performance check: short, and tight enough to catch an
+      # order-of-magnitude regression without being noisy on shared CI
+      # hardware. The full profiles are in quality/load-testing.
+      - name: Checkout latency
+        run: k6 run --quiet quality/performance-testing/checkout-latency.js
+        working-directory: k6
+        env:
+          RATE: '20'
+          DURATION: '15s'
+
+      - name: Spike profile
+        run: k6 run --quiet quality/load-testing/stress-and-spike.js
+        working-directory: k6
+        env:
+          SCENARIO: spike
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-summary
+          path: k6/reports/
+          retention-days: 7
+
+  terraform:
+    name: Terraform test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.10.3'
+          terraform_wrapper: false
+
+      - run: terraform fmt -check -recursive
+      # -backend=false: these tests run against plans and create nothing,
+      # so no state and no credentials are involved.
+      - run: terraform init -backend=false
+      - run: terraform validate
+      - run: terraform test

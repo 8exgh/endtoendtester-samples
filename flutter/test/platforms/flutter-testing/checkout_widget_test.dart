@@ -55,12 +55,23 @@ void main() {
        exactly like a missing label and is not one. ensureSemantics() turns
        it on, and the handle has to be disposed or the next test inherits
        an enabled tree it did not ask for. */
+    /* Disposed at the end of the body, not through addTearDown: the
+       framework's own end-of-test check runs before tear-downs do, and it
+       fails the test for a handle that a tear-down was about to release. */
     final handle = tester.ensureSemantics();
-    addTearDown(handle.dispose);
 
     await tester.pumpWidget(const CheckoutScreen(lines: basket));
 
-    expect(find.bySemanticsLabel('Quantity'), findsWidgets);
+    /* A RegExp, not the string 'Quantity'. A text field's semantics label
+       is the decoration label joined with its other announced text, so it
+       is "Quantity\n..." and an exact match finds nothing — which looks
+       exactly like a missing label and is not one. */
+    expect(find.bySemanticsLabel(RegExp('Quantity')), findsWidgets);
+
+    final field = tester.getSemantics(find.byKey(const Key('quantity')));
+    expect(field.label, contains('Quantity'));
+
+    handle.dispose();
   });
 
   testWidgets('lays out without overflowing a narrow screen', (tester) async {

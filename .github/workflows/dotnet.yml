@@ -1,0 +1,67 @@
+# .NET samples: xUnit, NUnit, MSTest, Moq, NSubstitute, an in-process
+# component test, and Avalonia's headless UI platform — which runs real
+# desktop UI tests on a Linux runner with no display server at all.
+name: .NET
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: dotnet-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: dotnet
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('dotnet/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - run: dotnet restore Samples.sln
+      - run: dotnet build Samples.sln --no-restore --configuration Release
+
+      - name: Test
+        run: |
+          dotnet test Samples.sln \
+            --no-build --configuration Release \
+            --logger "trx;LogFileName=results.trx" \
+            --logger "console;verbosity=minimal" \
+            --collect:"XPlat Code Coverage" \
+            --results-directory TestResults
+
+      # always(): the report is needed most when the step failed.
+      - name: Publish results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: .NET tests
+          path: dotnet/TestResults/**/*.trx
+          reporter: dotnet-trx
+          fail-on-error: false
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dotnet-results
+          path: dotnet/TestResults/
+          retention-days: 7

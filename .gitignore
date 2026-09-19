@@ -47,3 +47,6 @@ TestResults/
 .idea/
 .vscode/
 *.log
+
+# .NET
+*.user

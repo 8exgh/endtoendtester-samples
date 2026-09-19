@@ -29,9 +29,18 @@ export const options = {
     }
   },
   thresholds: {
-    // The test fails if these are not met. This is the part that matters.
+    /* The test fails if these are not met. This is the part that matters —
+       and the numbers have to come from what the system actually does, not
+       from a round figure that sounds strict.
+     *
+     * The sample shop sleeps 250-500ms in /api/checkout on purpose, so its
+     * p95 sits just under 500ms with no load at all. A 400ms threshold
+     * therefore fails every run and says nothing; 700ms still catches an
+     * order-of-magnitude regression, which is what a smoke performance
+     * check in CI is for. A threshold nobody can pass is a threshold
+     * somebody will delete. */
     http_req_failed: ['rate<0.01'],
-    checkout_latency: ['p(95)<400', 'p(99)<1500'],
+    checkout_latency: ['p(95)<700', 'p(99)<1500'],
     'checks{type:placed}': ['rate>0.99']
   }
 };

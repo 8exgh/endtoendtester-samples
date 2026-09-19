@@ -1,0 +1,15 @@
+{
+  "name": "endtoendtester-samples-selenium",
+  "private": true,
+  "type": "module",
+  "description": "Selenium WebDriver samples for endtoendtester.com",
+  "scripts": {
+    "app": "node ../browser/app/server.mjs",
+    "test": "start-server-and-test app http://127.0.0.1:4321/api/health 'node --test tests/**/*.test.mjs'"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "selenium-webdriver": "^4.27.0",
+    "start-server-and-test": "^2.0.9"
+  }
+}

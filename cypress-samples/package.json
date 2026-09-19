@@ -1,0 +1,15 @@
+{
+  "name": "endtoendtester-samples-cypress",
+  "private": true,
+  "description": "Cypress samples for endtoendtester.com",
+  "scripts": {
+    "app": "node ../browser/app/server.mjs",
+    "test": "start-server-and-test app http://127.0.0.1:4321/api/health 'cypress run'"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@testing-library/cypress": "^10.0.3",
+    "cypress": "^13.17.0",
+    "start-server-and-test": "^2.0.9"
+  }
+}

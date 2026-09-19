@@ -1,0 +1,87 @@
+# Cypress, Selenium and Vitest. Grouped because each is one small
+# workspace, and because all three drive the same sample shop in
+# browser/app.
+name: Cypress, Selenium, Vitest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: browser-tools-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  vitest:
+    name: Vitest and Vue
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: vitest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vitest/package-lock.json
+      - run: npm ci
+      - run: npx vitest run
+
+  cypress:
+    name: Cypress
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: cypress-samples/package-lock.json
+
+      # The browser/app server the specs drive lives in its own workspace.
+      - run: npm ci
+        working-directory: browser
+
+      - uses: cypress-io/github-action@v6
+        with:
+          working-directory: cypress-samples
+          start: npm run app
+          wait-on: 'http://127.0.0.1:4321/api/health'
+          wait-on-timeout: 60
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: cypress-samples/cypress/screenshots/
+          retention-days: 7
+
+  selenium:
+    name: Selenium WebDriver
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: selenium/package-lock.json
+
+      - run: npm ci
+        working-directory: browser
+      - run: npm ci
+        working-directory: selenium
+
+      # Chrome is preinstalled on the runner; Selenium Manager fetches a
+      # matching driver, so there is nothing else to set up.
+      - run: npm test
+        working-directory: selenium

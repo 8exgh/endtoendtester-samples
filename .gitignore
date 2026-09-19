@@ -1,0 +1,49 @@
+# dependencies
+node_modules/
+.pnp*
+vendor/bundle/
+
+# builds / caches
+dist/
+build/
+bin/
+obj/
+*.tsbuildinfo
+.gradle/
+target/
+__pycache__/
+.pytest_cache/
+.venv/
+.dart_tool/
+.terraform/
+.terraform.lock.hcl
+
+# test output
+test-results/
+playwright-report/
+blob-report/
+.nyc_output/
+reports/
+TestResults/
+*.trx
+*.lcov
+
+# Coverage OUTPUT only. Never a bare `coverage/` — the samples mirror the
+# site's URL structure, so `<runtime>/src/coverage/<slug>/` is a directory
+# of articles about coverage and very much belongs in the repository.
+/typescript/coverage/
+/vitest/coverage/
+/angular/coverage/
+/python/htmlcov/
+/python/.coverage
+/dotnet/coverage/
+/java/build/reports/
+/browser/coverage/
+
+# local
+.env
+.env.local
+.DS_Store
+.idea/
+.vscode/
+*.log

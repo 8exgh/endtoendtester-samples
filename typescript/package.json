@@ -1,0 +1,43 @@
+{
+  "name": "endtoendtester-samples-typescript",
+  "private": true,
+  "description": "Runnable TypeScript samples for endtoendtester.com",
+  "scripts": {
+    "test": "jest",
+    "test:unit": "jest --selectProjects node dom",
+    "test:docker": "jest --selectProjects docker",
+    "typecheck": "tsc --noEmit",
+    "coverage": "jest --selectProjects node dom --coverage"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@swc/core": "^1.10.1",
+    "@swc/jest": "^0.2.37",
+    "@testcontainers/postgresql": "^10.16.0",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/jest-axe": "^3.5.9",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "@types/supertest": "^6.0.2",
+    "express": "^5.0.1",
+    "jest": "^30.2.0",
+    "jest-axe": "^9.0.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "jest-junit": "^16.0.0",
+    "knockout": "^3.5.1",
+    "msw": "^2.7.0",
+    "pg": "^8.13.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "supertest": "^7.0.0",
+    "testcontainers": "^10.16.0",
+    "typescript": "^5.7.2"
+  }
+}

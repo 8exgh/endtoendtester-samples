@@ -1,0 +1,6 @@
+{
+  "$comment": "The map between an article on endtoendtester.com and the runnable sample(s) for it. The site reads this to render its 'Runnable samples' blocks, so a path here that does not exist is a broken link on a published page.",
+  "repo": "8exgh/endtoendtester-samples",
+  "site": "https://endtoendtester.com",
+  "samples": []
+}

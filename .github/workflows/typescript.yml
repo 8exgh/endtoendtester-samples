@@ -1,0 +1,87 @@
+# TypeScript samples — the bulk of the repository.
+#
+# Split into three jobs because the samples need three different
+# environments, and a Docker failure should not look like a unit-test
+# failure. See /ci-cd/github-actions for the article this is the sample for.
+name: TypeScript
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: typescript-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: typescript
+
+jobs:
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - run: npm ci
+      # Types are checked here rather than inside the test runner: SWC
+      # strips them, which is what makes the suite fast. /tools/jest
+      - run: npm run typecheck
+
+  unit:
+    name: Unit and DOM
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - run: npm ci
+      - run: npm run test:unit -- --coverage --ci
+
+      # always(): a report is needed most when the step failed.
+      - name: Publish results
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: TypeScript unit tests
+          path: typescript/reports/junit.xml
+          reporter: jest-junit
+          fail-on-error: false
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: typescript-coverage
+          path: typescript/coverage/
+          retention-days: 7
+
+  docker:
+    name: Containerised integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - run: npm ci
+      # The runner already has Docker, so Testcontainers needs no setup at
+      # all — no services block, no health-check scripting, no ports.
+      - run: npm run test:docker -- --ci

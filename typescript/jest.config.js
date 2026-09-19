@@ -61,6 +61,9 @@ module.exports = {
       transform,
       testMatch: dockerGlobs,
       // Pulling and starting Postgres is slower than any assertion in here.
+      // Note this does NOT cover beforeAll/afterAll, which is where the
+      // container actually starts — each docker sample calls
+      // jest.setTimeout itself for that.
       testTimeout: 120_000
     }
   ],

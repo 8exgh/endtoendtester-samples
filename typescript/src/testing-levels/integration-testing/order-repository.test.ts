@@ -4,6 +4,10 @@ import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { migrate, poolFor, startPostgres } from '../../_db/postgres';
 import { DuplicateReferenceError, OrderRepository } from '../../_db/order-repository';
 
+// Pulling and starting Postgres happens in a hook, and a project-level
+// `testTimeout` is not applied to hooks — so it is set explicitly here.
+jest.setTimeout(180_000);
+
 /* Your code against a real dependency. The bugs this catches are boring,
    frequent, and invisible from below — because a double is built from the
    same wrong assumption as the code.

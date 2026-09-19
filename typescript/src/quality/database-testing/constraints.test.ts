@@ -4,6 +4,10 @@ import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { migrate, poolFor, startPostgres } from '../../_db/postgres';
 import { OrderRepository } from '../../_db/order-repository';
 
+// Pulling and starting Postgres happens in a hook, and a project-level
+// `testTimeout` is not applied to hooks — so it is set explicitly here.
+jest.setTimeout(180_000);
+
 /* The layer everything else depends on, and the one most suites replace
    with a mock. https://endtoendtester.com/quality/database-testing */
 

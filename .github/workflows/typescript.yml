@@ -84,4 +84,12 @@ jobs:
       - run: npm ci
       # The runner already has Docker, so Testcontainers needs no setup at
       # all — no services block, no health-check scripting, no ports.
+      #
+      # The images are pulled first so the download is not happening inside
+      # a beforeAll hook, where it counts against the test timeout and
+      # produces a failure that looks like a broken test rather than a slow
+      # network.
+      - name: Pre-pull the images the samples use
+        run: docker pull postgres:16-alpine && docker pull redis:7-alpine
+
       - run: npm run test:docker -- --ci

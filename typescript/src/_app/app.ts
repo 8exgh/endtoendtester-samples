@@ -204,3 +204,22 @@ export function createApp(options: AppOptions = {}) {
 
   return app;
 }
+
+/* The routes this service exposes, and which of them return or mutate data
+   belonging to somebody. `roles/test-strategy` uses this to fail the build
+   when a protected route has no authorization test — a strategy you can
+   check is worth more than one you can only assert in a document. */
+export interface RouteDescriptor {
+  method: 'GET' | 'POST' | 'DELETE';
+  path: string;
+  protected: boolean;
+}
+
+export const ROUTES: RouteDescriptor[] = [
+  { method: 'GET', path: '/health', protected: false },
+  { method: 'POST', path: '/signin', protected: false },
+  { method: 'POST', path: '/orders', protected: true },
+  { method: 'GET', path: '/orders', protected: true },
+  { method: 'GET', path: '/orders/:id', protected: true },
+  { method: 'DELETE', path: '/orders/:id', protected: true }
+];

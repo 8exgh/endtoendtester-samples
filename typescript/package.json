@@ -7,7 +7,8 @@
     "test:unit": "jest --selectProjects node dom",
     "test:docker": "jest --selectProjects docker",
     "typecheck": "tsc --noEmit",
-    "coverage": "jest --selectProjects node dom --coverage"
+    "coverage": "jest --selectProjects node dom --coverage",
+    "coverage:metrics": "node ../tools/assert-coverage-gap.mjs"
   },
   "license": "MIT",
   "devDependencies": {

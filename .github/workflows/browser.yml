@@ -1,0 +1,136 @@
+# Browser samples. This workflow is itself the sample for
+# https://endtoendtester.com/ci-cd/playwright-sharding — the suite is split
+# across machines and the blob reports are merged back into one.
+name: Browser
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: browser-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: browser
+
+jobs:
+  # Everything, on the engine most users have, split across two machines.
+  chromium:
+    name: Chromium (shard ${{ matrix.shard }}/2)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      # One shard failing must not hide the state of the other.
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - run: npm ci
+
+      # The browser download is ~300MB and dominates a short run.
+      - name: Cache Playwright browsers
+        id: browser-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('browser/package-lock.json') }}
+
+      - run: npx playwright install --with-deps chromium
+        if: steps.browser-cache.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps chromium
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+
+      - run: npx playwright test --project=chromium --shard=${{ matrix.shard }}/2
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-chromium-${{ matrix.shard }}
+          path: browser/blob-report/
+          retention-days: 7
+
+  # The journeys that would end the business, on the other two engines.
+  cross-browser:
+    name: ${{ matrix.browser }} (critical only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [webkit-critical, firefox-critical]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser == 'webkit-critical' && 'webkit' || 'firefox' }}
+      - run: npx playwright test --project=${{ matrix.browser }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-${{ matrix.browser }}
+          path: browser/blob-report/
+          retention-days: 7
+
+  # One report for the whole run, which is what anyone diagnosing a failure
+  # actually needs. Without this you get four partial reports and four
+  # separate flaky counts.
+  report:
+    name: Merged report
+    needs: [chromium, cross-browser]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: browser/package-lock.json
+      - run: npm ci
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: browser/all-blobs
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - run: npx playwright merge-reports --reporter=html,json ./all-blobs > report.json
+        continue-on-error: true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: browser/playwright-report/
+          retention-days: 14
+
+      # A test that only passed on retry is not a passing test. Most runners
+      # hide that; Playwright distinguishes it, so the pipeline acts on it.
+      - name: Fail if anything only passed on retry
+        run: |
+          set -uo pipefail
+          if [ ! -s report.json ]; then
+            echo "no merged report to inspect"; exit 0
+          fi
+          flaky=$(jq '[.suites[]? | recurse(.suites[]?) | .specs[]? | select(.tests[]?.status == "flaky")] | length' report.json)
+          echo "tests that only passed on retry: ${flaky:-0}"
+          test "${flaky:-0}" -eq 0

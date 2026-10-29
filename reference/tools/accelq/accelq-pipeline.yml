@@ -1,0 +1,97 @@
+# ACCELQ from a pipeline — reference only.
+#
+# NOT run in CI: ACCELQ is a licensed platform with no self-serve trial, so
+# there is nothing a public runner can execute. This is the *shape* the
+# article recommends, written as a GitHub Actions workflow; the same three
+# jobs translate directly to Jenkins, Azure Pipelines or TeamCity.
+# https://endtoendtester.com/tools/accelq
+#
+# What it encodes:
+#   - a short smoke suite gates every pull request
+#   - the full regression pack runs nightly, not on every push
+#   - execution happens through the ACCELQ Local Agent on a self-hosted
+#     runner inside your own network, never a public grid
+#   - the heal log is published next to the results, so a healed step is
+#     reviewed rather than silently accepted
+#
+# The two trigger steps call ACCELQ's CI integration. The exact command and
+# the job identifiers come from your tenant, which is why they are
+# variables here rather than something copied from the internet.
+
+name: accelq
+
+on:
+  pull_request:
+  schedule:
+    - cron: '0 2 * * *' # nightly regression, 02:00 UTC
+  workflow_dispatch:
+
+env:
+  ACCELQ_TENANT: ${{ vars.ACCELQ_TENANT }}
+  ACCELQ_API_KEY: ${{ secrets.ACCELQ_API_KEY }} # tenant secret, never in a test step
+
+jobs:
+  smoke:
+    # Gate merges on something that finishes in minutes.
+    if: github.event_name == 'pull_request'
+    runs-on: [self-hosted, accelq-local-agent]
+    timeout-minutes: 20
+    steps:
+      - name: Trigger the smoke suite through the Local Agent
+        run: |
+          accelq-ci run \
+            --tenant "$ACCELQ_TENANT" \
+            --job "${{ vars.ACCELQ_SMOKE_JOB_ID }}" \
+            --environment "pr-${{ github.event.number }}" \
+            --wait --fail-on-step-failure \
+            --results-dir ./accelq-results
+
+      - name: Publish screenshots, step logs and the heal log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accelq-smoke-${{ github.run_id }}
+          path: accelq-results/
+
+  regression:
+    # The full pack, including the packaged-app journeys, every night
+    # against the sandbox — and on demand after a vendor release lands.
+    if: github.event_name != 'pull_request'
+    runs-on: [self-hosted, accelq-local-agent]
+    timeout-minutes: 180
+    steps:
+      - name: Trigger full regression
+        run: |
+          accelq-ci run \
+            --tenant "$ACCELQ_TENANT" \
+            --job "${{ vars.ACCELQ_REGRESSION_JOB_ID }}" \
+            --environment sandbox \
+            --wait --fail-on-step-failure \
+            --results-dir ./accelq-results
+
+      - name: Publish results and the heal log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accelq-regression-${{ github.run_id }}
+          path: accelq-results/
+
+  review-heals:
+    # A healed step is a change to what the suite asserts. Surface it where
+    # a human will read it, the same way a code change is reviewed.
+    needs: [regression]
+    if: always() && needs.regression.result != 'skipped'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: accelq-regression-*
+          merge-multiple: true
+          path: accelq-results
+
+      - name: Fail the build if any step healed outside review mode
+        run: |
+          healed=$(jq '[.steps[] | select(.healed == true and .reviewed == false)] | length' \
+            accelq-results/heal-log.json 2>/dev/null || echo 0)
+          echo "unreviewed heals: $healed"
+          test "$healed" -eq 0

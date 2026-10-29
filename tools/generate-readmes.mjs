@@ -196,10 +196,10 @@ ${rows.join('\n')}
 
 ## Reference-only samples
 
-Four need hardware or a licensed platform a Linux runner does not have, so
+${samples.filter((s) => !s.runs).length} need hardware or a licensed platform a Linux runner does not have, so
 they are written to be copied rather than stubbed into something that would
 pass while proving nothing. See [reference/README.md](reference/README.md) —
-two of the four have a runnable counterpart elsewhere in this repository.
+two of them have a runnable counterpart elsewhere in this repository.
 
 ## How this is kept honest
 

@@ -1,6 +1,6 @@
 # Reference-only samples
 
-Everything else in this repository runs in CI on every push. These four do
+Everything else in this repository runs in CI on every push. These five do
 not, and the reason is the same each time: they need hardware or a licensed
 platform a Linux runner does not have.
 
@@ -10,12 +10,13 @@ platform a Linux runner does not have.
 | `platforms/desktop-testing` | Windows and a real desktop session | [Desktop testing](https://endtoendtester.com/platforms/desktop-testing) |
 | `platforms/ios-app-testing` | macOS and Xcode | [iOS testing](https://endtoendtester.com/platforms/ios-app-testing) |
 | `platforms/android-app-testing` | the Android SDK and an emulator | [Android testing](https://endtoendtester.com/platforms/android-app-testing) |
+| `tools/accelq` | an ACCELQ tenant and its Local Agent — there is no self-serve trial | [ACCELQ](https://endtoendtester.com/tools/accelq) |
 
 They are written to be copied and run on a machine that has what they need,
 and they are deliberately not stubbed into something that would pass on a
 runner while proving nothing.
 
-Two of the four have a runnable counterpart elsewhere in the repository,
+Two of the five have a runnable counterpart elsewhere in the repository,
 which is worth knowing before reaching for a device farm:
 
 - **Desktop** — [`dotnet/Tests.Avalonia`](../dotnet/Tests.Avalonia) runs real

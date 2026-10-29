@@ -14,7 +14,7 @@ and all but four of them run in CI on every push.
 
 ## What this is
 
-87 sample directories covering all 83 articles, in
+88 sample directories covering all 84 articles, in
 TypeScript, C#, Java, Python, Ruby, Dart, Gherkin, HCL and four CI
 platforms' own configuration languages.
 
@@ -169,6 +169,7 @@ cd typescript && npm run mutation           # surviving mutants in 100%-covered 
 
 | Article | Sample | Language | CI |
 |---|---|---|---|
+| [Accelq](https://endtoendtester.com/tools/accelq) | [`reference/tools/accelq`](reference/tools/accelq) | reference only | — reference only |
 | [Appium](https://endtoendtester.com/tools/appium) | [`reference/tools/appium`](reference/tools/appium) | reference only | — reference only |
 | [Cypress](https://endtoendtester.com/tools/cypress) | [`cypress-samples/cypress/e2e/tools/cypress`](cypress-samples/cypress/e2e/tools/cypress) | JavaScript (Cypress) | [browser-tools](https://github.com/8exgh/endtoendtester-samples/actions/workflows/browser-tools.yml?query=branch%3Amain) |
 | [Jest](https://endtoendtester.com/tools/jest) | [`typescript/src/tools/jest`](typescript/src/tools/jest) | TypeScript | [typescript](https://github.com/8exgh/endtoendtester-samples/actions/workflows/typescript.yml?query=branch%3Amain) |
@@ -202,17 +203,17 @@ cd typescript && npm run mutation           # surviving mutants in 100%-covered 
 
 ## Reference-only samples
 
-Four need hardware or a licensed platform a Linux runner does not have, so
+5 need hardware or a licensed platform a Linux runner does not have, so
 they are written to be copied rather than stubbed into something that would
 pass while proving nothing. See [reference/README.md](reference/README.md) —
-two of the four have a runnable counterpart elsewhere in this repository.
+two of them have a runnable counterpart elsewhere in this repository.
 
 ## How this is kept honest
 
 - `tools/build-manifest.mjs` rebuilds `samples.json` and **fails** if a
   sample points at an article that does not exist. It also reports any
   article with no sample.
-- `tools/generate-readmes.mjs` writes all 87 sample READMEs
+- `tools/generate-readmes.mjs` writes all 88 sample READMEs
   from that manifest, so no link is maintained by hand.
 - `tools/validate_pipelines.py` parses the four CI platform configs and
   asserts each still carries the property its article is about.
